@@ -20,6 +20,7 @@ local FILES = {
 	{ "sh_net.lua", "sh" },
 	{ "sh_config.lua", "sh" },
 	{ "sv_data.lua", "sv" },
+	{ "sv_resources.lua", "sv" },
 	{ "cl_ui.lua", "cl" },
 	{ "cl_ui_panels.lua", "cl" },
 	{ "cl_ui_widgets.lua", "cl" },
