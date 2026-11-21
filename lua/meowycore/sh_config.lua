@@ -289,7 +289,7 @@ if SERVER then
 		result(ok, err and tostring(err))
 	end)
 
-	concommand.Add("meowycore_config", function(ply, _, args)
+	concommand.Add("meowycore_config", function(ply, _, args, argStr)
 		local function reply(key, vars)
 			local text = MeowyCore.L("core", key, vars)
 			if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, text) else print(text) end
@@ -310,7 +310,9 @@ if SERVER then
 			reply("config.consoleonly", { ns = ns, key = key })
 			return
 		end
-		local text = table.concat(args, " ", 3)
+		-- Use the raw text: the console splits tokens on ':' too, which would
+		-- turn STEAM_0:1:2 into "STEAM_0 : 1 : 2".
+		local text = string.match(argStr or "", "^%s*%S+%s+%S+%s+(.-)%s*$") or table.concat(args, " ", 3)
 		local value, reason = parseText(set.entries[key], text)
 		if value == nil then reply("config.invalid", { ns = ns, key = key, reason = reason }) return end
 		local ok, err = set:Set(key, value)
