@@ -40,10 +40,19 @@ function UI.SetAccent(color)
 	T.accentSoft = C(math.floor(color.r * 0.22 + 10), math.floor(color.g * 0.22 + 10), math.floor(color.b * 0.22 + 12))
 end
 
---- 1080p design size -> current resolution (minimum 1 px).
+UI.scaleCache = {}
+
+--- 1080p design size -> current resolution (minimum 1 px). Memoised: painting
+--- code calls this many times per frame.
 function UI.Scale(px)
-	return math.max(1, math.Round(px * ScrH() / 1080))
+	local v = UI.scaleCache[px]
+	if v then return v end
+	v = math.max(1, math.Round(px * ScrH() / 1080))
+	UI.scaleCache[px] = v
+	return v
 end
+
+hook.Add("OnScreenSizeChanged", "mcore_ui_scale", function() UI.scaleCache = {} end)
 
 -- Fonts --------------------------------------------------------------------------
 
@@ -56,19 +65,29 @@ local function createFont(key, size, weight, mono)
 	})
 end
 
---- Font name for a design size and weight, created once.
+UI.fontCache = UI.fontCache or {}   -- [mono][size][weight] -> name (no string building per call)
+
+--- Font name for a design size and weight, created once. Called many times
+--- per frame by painting code, so the lookup allocates nothing.
 function UI.Font(size, weight, opts)
 	weight = weight or 500
-	local mono = opts and opts.mono
+	local mono = opts and opts.mono and true or false
+	local bySize = UI.fontCache[mono]
+	if not bySize then bySize = {} UI.fontCache[mono] = bySize end
+	local byWeight = bySize[size]
+	if not byWeight then byWeight = {} bySize[size] = byWeight end
+	local name = byWeight[weight]
+	if name then return name end
 	local key = size .. "_" .. weight .. (mono and "_m" or "")
-	if not UI.fonts[key] then
-		createFont(key, size, weight, mono)
-		UI.fonts[key] = "mcore_" .. key
-	end
-	return UI.fonts[key]
+	createFont(key, size, weight, mono)
+	name = "mcore_" .. key
+	UI.fonts[key] = name
+	byWeight[weight] = name
+	return name
 end
 
 hook.Add("OnScreenSizeChanged", "mcore_ui_fonts", function()
+	UI.scaleCache = {} -- hook order isn't guaranteed; never rebuild fonts with stale scales
 	for key in pairs(UI.fonts) do
 		local size, weight, mono = string.match(key, "^(%d+)_(%d+)(_?m?)$")
 		createFont(key, tonumber(size), tonumber(weight), mono == "_m")
@@ -95,35 +114,115 @@ function UI.DrawIcon(name, x, y, size, color)
 	if not mat then return end
 	surface.SetDrawColor(color.r, color.g, color.b, color.a or 255)
 	surface.SetMaterial(mat)
-	surface.DrawTexturedRect(x, y, size, size)
+	-- Whole pixels: half-pixel positions make icons soft and shimmer.
+	surface.DrawTexturedRect(math.floor(x + 0.5), math.floor(y + 0.5), math.floor(size + 0.5), math.floor(size + 0.5))
 end
 
 -- Drawing helpers ----------------------------------------------------------------
+--[[
+	Anti-aliased shapes. draw.RoundedBox stretches GMod's tiny built-in corner
+	textures (8/16 px, no filtering), which gives stair-stepped corners and
+	octagons instead of circles. MeowyCore draws corners from one 128 px
+	quarter-disc texture with mipmaps, so every radius is smooth, and snaps
+	everything to whole pixels.
+]]
 
---- Rounded box with a 1 px border (both opaque).
+local CORNER = Material("meowycore/ui/corner.png", "smooth mips")
+local CORNER_INV = Material("meowycore/ui/corner_inv.png", "smooth mips")
+local SHADOW_MAT = Material("meowycore/ui/shadow.png", "smooth mips")
+local floor, min = math.floor, math.min
+
+local function snap(v) return floor(v + 0.5) end
+
+-- Draws one corner of size r at x, y. The texture is the top-left shape.
+local function corner(x, y, r, flipX, flipY)
+	local u0, u1 = 0, 1
+	local v0, v1 = 0, 1
+	if flipX then u0, u1 = 1, 0 end
+	if flipY then v0, v1 = 1, 0 end
+	surface.DrawTexturedRectUV(x, y, r, r, u0, v0, u1, v1)
+end
+
+--- Anti-aliased rounded box; same arguments as draw.RoundedBoxEx.
+function UI.RoundedBoxEx(radius, x, y, w, h, color, tl, tr, bl, br)
+	x, y, w, h = snap(x), snap(y), snap(w), snap(h)
+	if w <= 0 or h <= 0 then return end
+	local r = floor(min(radius, w / 2, h / 2))
+	surface.SetDrawColor(color.r, color.g, color.b, color.a or 255)
+	if r <= 0 then
+		surface.DrawRect(x, y, w, h)
+		return
+	end
+	surface.DrawRect(x + r, y, w - r * 2, h)
+	surface.DrawRect(x, y + r, r, h - r * 2)
+	surface.DrawRect(x + w - r, y + r, r, h - r * 2)
+
+	surface.SetMaterial(CORNER)
+	if tl then corner(x, y, r, false, false) else surface.DrawRect(x, y, r, r) end
+	if tr then corner(x + w - r, y, r, true, false) else surface.DrawRect(x + w - r, y, r, r) end
+	if bl then corner(x, y + h - r, r, false, true) else surface.DrawRect(x, y + h - r, r, r) end
+	if br then corner(x + w - r, y + h - r, r, true, true) else surface.DrawRect(x + w - r, y + h - r, r, r) end
+end
+
+--- Anti-aliased rounded box; same arguments as draw.RoundedBox.
+function UI.RoundedBox(radius, x, y, w, h, color)
+	UI.RoundedBoxEx(radius, x, y, w, h, color, true, true, true, true)
+end
+
+--- Anti-aliased filled circle centred on cx, cy.
+function UI.Circle(cx, cy, radius, color)
+	UI.RoundedBox(radius, cx - radius, cy - radius, radius * 2, radius * 2, color)
+end
+
+--- Rounded box with a 1 px border. The fill is a concentric box one pixel in,
+--- with a radius one smaller, so the ring has the same thickness all round.
 function UI.DrawBox(x, y, w, h, fill, border, radius)
 	radius = radius or UI.Scale(T.radius)
 	if border then
-		draw.RoundedBox(radius, x, y, w, h, border)
-		draw.RoundedBox(math.max(0, radius - 1), x + 1, y + 1, w - 2, h - 2, fill)
+		UI.RoundedBox(radius, x, y, w, h, border)
+		UI.RoundedBox(math.max(0, radius - 1), x + 1, y + 1, w - 2, h - 2, fill)
 	else
-		draw.RoundedBox(radius, x, y, w, h, fill)
+		UI.RoundedBox(radius, x, y, w, h, fill)
 	end
 end
 
-local SHADOW = Color(0, 0, 0, 14)
-
---- Soft drop shadow around a rectangle (draws outside the panel; call with clipping disabled).
+--- Soft drop shadow around a rectangle, drawn as one 9-slice blur texture
+--- (call with clipping disabled; it draws outside the rectangle).
 function UI.DrawShadow(x, y, w, h, spread)
-	spread = spread or UI.Scale(14)
-	local steps = 6
-	for i = steps, 1, -1 do
-		local o = math.floor(spread * i / steps)
-		draw.RoundedBox(UI.Scale(T.radius) + o, x - o, y - o + math.floor(o / 2), w + o * 2, h + o * 2, SHADOW)
+	spread = floor(spread or UI.Scale(16))
+	local c = floor(spread * 1.5)           -- destination size of each 9-slice corner
+	local b = 48 / 128                       -- texture border (see tools/dev/gen_ui_textures.py)
+	local x0, y0 = snap(x - spread), snap(y - spread + spread / 3)
+	local x1, y1 = snap(x + w + spread), snap(y + h + spread + spread / 3)
+	local mw, mh = (x1 - x0) - c * 2, (y1 - y0) - c * 2
+	if mw < 0 or mh < 0 then return end
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.SetMaterial(SHADOW_MAT)
+	local du = { { x0, c, 0, b }, { x0 + c, mw, b, 1 - b }, { x1 - c, c, 1 - b, 1 } }
+	local dv = { { y0, c, 0, b }, { y0 + c, mh, b, 1 - b }, { y1 - c, c, 1 - b, 1 } }
+	for _, col in ipairs(du) do
+		for _, row in ipairs(dv) do
+			surface.DrawTexturedRectUV(col[1], row[1], col[2], row[2], col[3], row[3], col[4], row[4])
+		end
 	end
 end
 
---- Small rounded label ("pill"). Returns its width.
+--- Rounds the corners of a child panel (e.g. AvatarImage) by painting the
+--- parent's background colour over them. getColor() returns that colour.
+function UI.RoundCorners(panel, radius, getColor)
+	panel.PaintOver = function(_, w, h)
+		local color = getColor()
+		local r = floor(min(radius, w / 2, h / 2))
+		surface.SetDrawColor(color.r, color.g, color.b, 255)
+		surface.SetMaterial(CORNER_INV)
+		corner(0, 0, r, false, false)
+		corner(w - r, 0, r, true, false)
+		corner(0, h - r, r, false, true)
+		corner(w - r, h - r, r, true, true)
+	end
+end
+
+--- Small rounded label ("pill"), vertically centred on y. Returns its width.
 function UI.DrawPill(text, x, y, fg, bg, font, alignRight)
 	font = font or UI.Font(13, 700)
 	surface.SetFont(font)
@@ -131,8 +230,9 @@ function UI.DrawPill(text, x, y, fg, bg, font, alignRight)
 	local padX, padY = UI.Scale(8), UI.Scale(3)
 	local w, h = tw + padX * 2, th + padY * 2
 	if alignRight then x = x - w end
-	draw.RoundedBox(math.floor(h / 2), x, y - h / 2, w, h, bg)
-	draw.SimpleText(text, font, x + padX, y, fg, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+	x, y = snap(x), snap(y - h / 2)
+	UI.RoundedBox(floor(h / 2), x, y, w, h, bg)
+	draw.SimpleText(text, font, x + padX, y + padY, fg, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
 	return w
 end
 
@@ -203,7 +303,7 @@ function UI.Toast(text, kind, seconds)
 		UI.DrawShadow(0, 0, pw, ph, UI.Scale(8))
 		DisableClipping(false)
 		UI.DrawBox(0, 0, pw, ph, T.card, T.borderStrong)
-		draw.RoundedBoxEx(UI.Scale(T.radius), 0, 0, UI.Scale(4), ph, fg, true, false, true, false)
+		UI.RoundedBox(UI.Scale(2), UI.Scale(6), UI.Scale(9), UI.Scale(3), ph - UI.Scale(18), fg)
 		UI.DrawIcon(TOAST_ICONS[kind] or "info", UI.Scale(14), (ph - UI.Scale(20)) / 2, UI.Scale(20), fg)
 		draw.SimpleText(text, UI.Font(15, 600), UI.Scale(44), ph / 2, T.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 	end

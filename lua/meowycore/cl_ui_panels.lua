@@ -32,7 +32,7 @@ function FRAME:Init()
 	self.close.DoClick = function() self:Close() end
 	self.close.Paint = function(btn, w, h)
 		btn.hover = Lerp(FrameTime() * 14, btn.hover, btn:IsHovered() and 1 or 0)
-		if btn.hover > 0.02 then draw.RoundedBox(math.floor(w / 2), 0, 0, w, h, T.hover) end
+		if btn.hover > 0.02 then UI.RoundedBox(math.floor(w / 2), 0, 0, w, h, T.hover) end
 		local s = math.floor(w * 0.6)
 		UI.DrawIcon("close", (w - s) / 2, (h - s) / 2, s, UI.LerpColor(btn.hover, T.textDim, T.text, btn.col))
 	end
@@ -93,14 +93,14 @@ function FRAME:Paint(w, h)
 	DisableClipping(false)
 	UI.DrawBox(0, 0, w, h, T.bg, T.border)
 	local r = UI.Scale(T.radius)
-	draw.RoundedBoxEx(r, 1, 1, w - 2, UI.Scale(HEADER), T.panel, true, true, false, false)
+	UI.RoundedBoxEx(r, 1, 1, w - 2, UI.Scale(HEADER), T.panel, true, true, false, false)
 	surface.SetDrawColor(T.border)
 	surface.DrawRect(1, UI.Scale(HEADER), w - 2, 1)
 
 	local x = UI.Scale(18)
 	if self.icon then
 		local s = UI.Scale(30)
-		draw.RoundedBox(UI.Scale(T.radiusSmall), x, (UI.Scale(HEADER) - s) / 2, s, s, T.accentSoft)
+		UI.RoundedBox(UI.Scale(T.radiusSmall), x, (UI.Scale(HEADER) - s) / 2, s, s, T.accentSoft)
 		UI.DrawIcon(self.icon, x + UI.Scale(5), (UI.Scale(HEADER) - s) / 2 + UI.Scale(5), s - UI.Scale(10), T.accent)
 		x = x + s + UI.Scale(12)
 	end
@@ -147,27 +147,38 @@ function BUTTON:Init()
 	self:SetTall(UI.Scale(36))
 end
 
-function BUTTON:SetLabel(text) self.label = text end
+function BUTTON:SetLabel(text) self.label = text self.textW = nil end
 function BUTTON:SetIcon(name) self.icon = name end
 function BUTTON:SetVariant(v) self.variant = VARIANTS[v] and v or "secondary" end
 function BUTTON:SetPrimary(b) self.variant = b and "primary" or "secondary" end
-function BUTTON:SetFontSize(size) self.fontSize = size end
+function BUTTON:SetFontSize(size) self.fontSize = size self.textW = nil end
+
+local function approach(current, target, speed)
+	if current == target then return current end
+	local v = Lerp(FrameTime() * speed, current, target)
+	if math.abs(v - target) < 0.01 then return target end
+	return v
+end
 
 function BUTTON:Paint(w, h)
 	local enabled = self:IsEnabled()
-	self.hover = Lerp(FrameTime() * 14, self.hover, (enabled and self:IsHovered()) and 1 or 0)
-	self.press = Lerp(FrameTime() * 20, self.press, (enabled and self:IsDown()) and 1 or 0)
+	self.hover = approach(self.hover, (enabled and self:IsHovered()) and 1 or 0, 14)
+	self.press = approach(self.press, (enabled and self:IsDown()) and 1 or 0, 20)
 	local bg, fg, border = VARIANTS[self.variant]()
 	if not enabled then fg = T.textMuted end
 
 	local r = UI.Scale(T.radiusSmall)
 	if bg then
-		UI.LerpColor(self.hover * 0.12 + self.press * 0.1, bg, T.text, self.fill)
-		if not enabled then self.fill.r, self.fill.g, self.fill.b = T.card.r, T.card.g, T.card.b end
-		UI.DrawBox(0, 0, w, h, self.fill, enabled and border or nil, r)
+		local fill = bg
+		if not enabled then
+			fill = T.card
+		elseif self.hover > 0 or self.press > 0 then
+			fill = UI.LerpColor(self.hover * 0.12 + self.press * 0.1, bg, T.text, self.fill)
+		end
+		UI.DrawBox(0, 0, w, h, fill, enabled and border or nil, r)
 	elseif self.hover > 0.02 then
 		UI.LerpColor(self.hover, T.bg, T.hover, self.fill)
-		draw.RoundedBox(r, 0, 0, w, h, self.fill)
+		UI.RoundedBox(r, 0, 0, w, h, self.fill)
 	end
 
 	local font = UI.Font(self.fontSize or 15, 600)
@@ -176,8 +187,11 @@ function BUTTON:Paint(w, h)
 		UI.DrawIcon(self.icon, (w - iconSize) / 2, (h - iconSize) / 2, iconSize, (self.variant == "ghost" and self.hover > 0.5) and T.text or fg)
 		return
 	end
-	surface.SetFont(font)
-	local tw = surface.GetTextSize(self.label)
+	if not self.textW or self.textFont ~= font then
+		surface.SetFont(font)
+		self.textW, self.textFont = surface.GetTextSize(self.label), font
+	end
+	local tw = self.textW
 	local total = tw + (self.icon and iconSize + UI.Scale(8) or 0)
 	local x = (w - total) / 2
 	if self.align == "left" then x = UI.Scale(12) end
@@ -353,7 +367,7 @@ function SCROLL:Init()
 	bar:SetHideButtons(true)
 	bar.Paint = function() end
 	bar.btnGrip.Paint = function(grip, w, h)
-		draw.RoundedBox(math.floor(w / 2), UI.Scale(2), 0, w - UI.Scale(4), h, grip:IsHovered() and T.borderStrong or T.hover)
+		UI.RoundedBox(math.floor(w / 2), UI.Scale(2), 0, w - UI.Scale(4), h, grip:IsHovered() and T.borderStrong or T.hover)
 	end
 end
 

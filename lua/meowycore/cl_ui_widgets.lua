@@ -139,16 +139,21 @@ function LIST:AddRow(values, data, colors)
 		av:SetMouseInputEnabled(false)
 		if IsValid(data.player) then av:SetPlayer(data.player, 64)
 		elseif data.steamid64 then av:SetSteamID(data.steamid64, 64) end
+		UI.RoundCorners(av, UI.Scale(6), function() return row.bgColor or T.card end)
 	end
 
 	row.Paint = function(btn, w, h)
 		btn.hover = Lerp(FrameTime() * 16, btn.hover, btn:IsHovered() and 1 or 0)
 		if list.selected == btn then
-			draw.RoundedBox(UI.Scale(T.radiusSmall), 0, 0, w, h, T.hover)
-			draw.RoundedBox(2, 0, UI.Scale(8), UI.Scale(3), h - UI.Scale(16), T.accent)
+			UI.RoundedBox(UI.Scale(T.radiusSmall), 0, 0, w, h, T.hover)
+			UI.RoundedBox(2, 0, UI.Scale(8), UI.Scale(3), h - UI.Scale(16), T.accent)
+			btn.bgColor = T.hover
 		elseif btn.hover > 0.02 then
 			UI.LerpColor(btn.hover, T.card, T.input, btn.fill)
-			draw.RoundedBox(UI.Scale(T.radiusSmall), 0, 0, w, h, btn.fill)
+			UI.RoundedBox(UI.Scale(T.radiusSmall), 0, 0, w, h, btn.fill)
+			btn.bgColor = btn.fill
+		else
+			btn.bgColor = T.card
 		end
 
 		local font = UI.Font(15, 500)
@@ -197,7 +202,7 @@ function LIST:Paint(w, h)
 			for i = 0, 7 do
 				local ang = math.rad(a + i * 45)
 				local alpha = 40 + i * 25
-				draw.RoundedBox(2, w / 2 + math.cos(ang) * UI.Scale(12) - 2, cy - s / 2 + math.sin(ang) * UI.Scale(12) - 2, 5, 5, Color(T.textDim.r, T.textDim.g, T.textDim.b, alpha))
+				UI.RoundedBox(2, w / 2 + math.cos(ang) * UI.Scale(12) - 2, cy - s / 2 + math.sin(ang) * UI.Scale(12) - 2, 5, 5, Color(T.textDim.r, T.textDim.g, T.textDim.b, alpha))
 			end
 		else
 			UI.DrawIcon(self.emptyIcon, (w - s) / 2, cy - s - UI.Scale(6), s, T.textMuted)
@@ -236,7 +241,7 @@ function COMBO:OpenMenu(...)
 		opt:SetTall(UI.Scale(30))
 		opt:SetTextInset(UI.Scale(10), 0)
 		opt.Paint = function(o, w, h)
-			if o:IsHovered() then draw.RoundedBox(UI.Scale(4), 2, 1, w - 4, h - 2, T.hover) end
+			if o:IsHovered() then UI.RoundedBox(UI.Scale(4), 2, 1, w - 4, h - 2, T.hover) end
 		end
 	end
 end
@@ -268,10 +273,10 @@ function SWITCH:Paint(w, h)
 	local tw, th = UI.Scale(40), UI.Scale(22)
 	local y = (h - th) / 2
 	UI.LerpColor(self.anim, T.hover, T.accent, self.fill)
-	draw.RoundedBox(math.floor(th / 2), 0, y, tw, th, self.fill)
+	UI.RoundedBox(math.floor(th / 2), 0, y, tw, th, self.fill)
 	local knob = th - UI.Scale(6)
 	local kx = Lerp(self.anim, UI.Scale(3), tw - knob - UI.Scale(3))
-	draw.RoundedBox(math.floor(knob / 2), kx, y + UI.Scale(3), knob, knob, self.on and T.accentText or T.textDim)
+	UI.RoundedBox(math.floor(knob / 2), kx, y + UI.Scale(3), knob, knob, self.on and T.accentText or T.textDim)
 end
 
 vgui.Register("MeowyCore.Switch", SWITCH, "DButton")
@@ -300,7 +305,7 @@ function CHECK:Paint(w, h)
 	local box = UI.Scale(18)
 	local y = (h - box) / 2
 	if self.checked then
-		draw.RoundedBox(UI.Scale(4), 0, y, box, box, T.accent)
+		UI.RoundedBox(UI.Scale(4), 0, y, box, box, T.accent)
 		UI.DrawIcon("check", 0, y, box, T.accentText)
 	else
 		UI.DrawBox(0, y, box, box, T.input, self:IsHovered() and T.borderStrong or T.border, UI.Scale(4))
@@ -340,10 +345,10 @@ function SEG:SetOptions(options)
 			if active then
 				local fg, soft = UI.KindColors(opt.kind or "accent")
 				if opt.kind == "neutral" then fg, soft = T.text, T.hover end
-				draw.RoundedBox(UI.Scale(4), 1, 1, w - 2, h - 2, soft)
+				UI.RoundedBox(UI.Scale(4), 1, 1, w - 2, h - 2, soft)
 				draw.SimpleText(opt.label, UI.Font(13, 700), w / 2, h / 2, fg, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 			else
-				if btn:IsHovered() then draw.RoundedBox(UI.Scale(4), 1, 1, w - 2, h - 2, T.hover) end
+				if btn:IsHovered() then UI.RoundedBox(UI.Scale(4), 1, 1, w - 2, h - 2, T.hover) end
 				draw.SimpleText(opt.label, UI.Font(13, 600), w / 2, h / 2, T.textMuted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 			end
 		end
@@ -396,8 +401,8 @@ function PICKER:Init()
 		s:DockMargin(0, 0, UI.Scale(6), 0)
 		s.Paint = function(btn, w, h)
 			local same = self.color.r == c.r and self.color.g == c.g and self.color.b == c.b
-			if same or btn:IsHovered() then draw.RoundedBox(math.floor(w / 2), 0, 0, w, h, same and T.text or T.borderStrong) end
-			draw.RoundedBox(math.floor(w / 2) - 3, 3, 3, w - 6, h - 6, c)
+			if same or btn:IsHovered() then UI.RoundedBox(math.floor(w / 2), 0, 0, w, h, same and T.text or T.borderStrong) end
+			UI.RoundedBox(math.floor(w / 2) - 3, 3, 3, w - 6, h - 6, c)
 		end
 		s.DoClick = function() self:SetColor(c, true) end
 	end
@@ -423,7 +428,7 @@ function PICKER:GetColor() return self.color end
 function PICKER:PaintOver()
 	local _, ey = self.entry:GetPos()
 	local s = self.entry:GetTall()
-	draw.RoundedBox(UI.Scale(T.radiusSmall), 0, ey, s - UI.Scale(6), s, self.color)
+	UI.RoundedBox(UI.Scale(T.radiusSmall), 0, ey, s - UI.Scale(6), s, self.color)
 end
 
 vgui.Register("MeowyCore.ColorPicker", PICKER, "Panel")
@@ -449,10 +454,10 @@ function NAV:SetBadge(text) self.badge = text end
 function NAV:Paint(w, h)
 	self.hover = Lerp(FrameTime() * 16, self.hover, self:IsHovered() and 1 or 0)
 	if self.active then
-		draw.RoundedBox(UI.Scale(T.radiusSmall), 0, 0, w, h, T.accentSoft)
+		UI.RoundedBox(UI.Scale(T.radiusSmall), 0, 0, w, h, T.accentSoft)
 	elseif self.hover > 0.02 then
 		UI.LerpColor(self.hover, T.panel, T.hover, self.fill)
-		draw.RoundedBox(UI.Scale(T.radiusSmall), 0, 0, w, h, self.fill)
+		UI.RoundedBox(UI.Scale(T.radiusSmall), 0, 0, w, h, self.fill)
 	end
 	local color = self.active and T.accent or (self.hover > 0.5 and T.text or T.textDim)
 	local x = UI.Scale(12)
@@ -491,7 +496,7 @@ function UI.ContextMenu()
 		opt:SetTall(UI.Scale(32))
 		opt:SetText("")
 		opt.Paint = function(o, w, h)
-			if o:IsHovered() then draw.RoundedBox(UI.Scale(4), UI.Scale(4), 1, w - UI.Scale(8), h - 2, danger and T.dangerSoft or T.hover) end
+			if o:IsHovered() then UI.RoundedBox(UI.Scale(4), UI.Scale(4), 1, w - UI.Scale(8), h - 2, danger and T.dangerSoft or T.hover) end
 			local color = danger and T.danger or (o:IsHovered() and T.text or T.textDim)
 			if icon then UI.DrawIcon(icon, UI.Scale(12), (h - UI.Scale(16)) / 2, UI.Scale(16), color) end
 			draw.SimpleText(label, UI.Font(14, 600), UI.Scale(38), h / 2, danger and T.danger or T.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
