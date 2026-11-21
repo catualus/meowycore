@@ -12,10 +12,13 @@
 local UI = MeowyCore.UI or {}
 MeowyCore.UI = UI
 
+-- Surfaces are fully opaque on purpose: GMod renders partial alpha much more
+-- transparent than the number suggests (245/255 shows the world through).
+-- Use a separate overlay colour when transparency is actually wanted.
 UI.Theme = UI.Theme or {
-	background = Color(18, 19, 24, 245),
-	surface = Color(28, 30, 37, 250),
-	surfaceAlt = Color(36, 39, 48, 250),
+	background = Color(18, 19, 24, 255),
+	surface = Color(28, 30, 37, 255),
+	surfaceAlt = Color(36, 39, 48, 255),
 	surfaceHover = Color(44, 48, 59, 255),
 	border = Color(255, 255, 255, 14),
 	text = Color(236, 238, 243),

@@ -92,14 +92,19 @@ function BUTTON:SetLabel(text) self.label = text end
 function BUTTON:SetPrimary(b) self.primary = b end
 
 function BUTTON:Paint(w, h)
-	self.hover = Lerp(FrameTime() * 12, self.hover, (self:IsHovered() and self:IsEnabled()) and 1 or 0)
-	local base = self.primary and T.accent or T.surfaceAlt
-	local top = self.primary and T.text or T.surfaceHover
+	local enabled = self:IsEnabled()
+	self.hover = Lerp(FrameTime() * 12, self.hover, (self:IsHovered() and enabled) and 1 or 0)
+	local base, top, textColor
+	if not enabled then
+		base, top, textColor = T.surface, T.surface, T.textDim
+	elseif self.primary then
+		base, top, textColor = T.accent, T.text, T.accentText
+	else
+		base, top, textColor = T.surfaceAlt, T.surfaceHover, T.text
+	end
 	UI.LerpColor(self.hover * 0.25, base, top, self.fill)
-	if not self:IsEnabled() then self.fill.a = 120 end
 	draw.RoundedBox(UI.Scale(T.radius), 0, 0, w, h, self.fill)
-	draw.SimpleText(self.label, UI.Font(17, 600), w / 2, h / 2, self.primary and T.accentText or T.text,
-		TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(self.label, UI.Font(17, 600), w / 2, h / 2, textColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 vgui.Register("MeowyCore.Button", BUTTON, "DButton")
