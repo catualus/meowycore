@@ -5,5 +5,6 @@ MeowyCore.Lang.Register("core", "en", {
 	["config.unknown"] = "Unknown setting {ns}.{key}.",
 	["config.usage"] = "Usage: meowycore_config <namespace> <key> [value]",
 	["config.value"] = "{ns}.{key} = {value}",
+	["config.consoleonly"] = "{ns}.{key} can only be changed from the server console.",
 	["update.available"] = "{name} {latest} is available (installed: {installed}). Download it from your GmodStore purchases.",
 })

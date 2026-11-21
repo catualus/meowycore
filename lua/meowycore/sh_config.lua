@@ -11,6 +11,9 @@
 
 	Saved to data/meowycore/config/<namespace>.json on the server.
 	Keys marked shared = true are sent to clients (on join and on change).
+	Keys marked consoleOnly = true can only be changed from the server console
+	(not by players, not from the in-game editor): use it for anything that
+	grants access, such as owner lists.
 	hook "MeowyCore.ConfigChanged"(namespace, key, value, oldValue) runs in both realms.
 	Console: meowycore_config <namespace> <key> [value]  (privilege meowycore.config)
 ]]
@@ -212,6 +215,34 @@ Config.ValueMessage = MeowyCore.Net.Define("mcore_config_value", {
 	},
 })
 
+-- In-game editing (privilege meowycore.config). The server validates every
+-- value exactly as the console command does.
+Config.FullQuery = MeowyCore.Net.Define("mcore_config_query", {
+	to = "server",
+	fields = { { "ns", "string", max = 32 } },
+	rate = { burst = 5, refill = 2 },
+	permission = "meowycore.config",
+})
+
+Config.FullMessage = MeowyCore.Net.Define("mcore_config_full", {
+	to = "client",
+	fields = { { "ns", "string", max = 32 }, { "entries", "json", max = 30000 }, { "values", "json", max = 30000 } },
+})
+
+Config.SetRequest = MeowyCore.Net.Define("mcore_config_set", {
+	to = "server",
+	fields = { { "ns", "string", max = 32 }, { "key", "string", max = 64 }, { "value", "json", max = 16000 } },
+	rate = { burst = 10, refill = 0.5 },
+	permission = "meowycore.config",
+})
+
+Config.SetResult = MeowyCore.Net.Define("mcore_config_setresult", {
+	to = "client",
+	fields = { { "ns", "string", max = 32 }, { "key", "string", max = 64 }, { "ok", "bool" }, { "reason", "string", max = 200 } },
+})
+
+local EXPORTED = { "key", "type", "default", "min", "max", "integer", "maxLen", "enum", "shared", "consoleOnly" }
+
 local function applyClientValue(ns, key, raw)
 	local set = Config.sets[ns]
 	if not set or not set.entries[key] then return end
@@ -228,6 +259,34 @@ if SERVER then
 		local out = {}
 		for ns, set in pairs(Config.sets) do out[ns] = set:SharedValues() end
 		Config.SyncMessage:Send(ply, { sets = out })
+	end)
+
+	Config.FullQuery:Receive(function(ply, data)
+		local set = Config.sets[data.ns]
+		if not set then return end
+		local entries, values = {}, {}
+		for _, key in ipairs(set.order) do
+			local entry, out = set.entries[key], {}
+			for _, field in ipairs(EXPORTED) do out[field] = entry[field] end
+			table.insert(entries, out)
+			values[key] = set:Get(key)
+		end
+		Config.FullMessage:Send(ply, { ns = data.ns, entries = entries, values = values })
+	end)
+
+	Config.SetRequest:Receive(function(ply, data)
+		local set = Config.sets[data.ns]
+		local function result(ok, reason)
+			Config.SetResult:Send(ply, { ns = data.ns, key = data.key, ok = ok, reason = reason or "" })
+		end
+		if not set or not set:Has(data.key) then result(false, "unknown setting") return end
+		if set.entries[data.key].consoleOnly then result(false, "this setting can only be changed from the server console") return end
+		local value = fromJSON(set.entries[data.key], data.value.v)
+		local ok, err = set:Set(data.key, value)
+		if ok then
+			log:Info("%s set %s.%s from the menu", ply:SteamID(), data.ns, data.key)
+		end
+		result(ok, err and tostring(err))
 	end)
 
 	concommand.Add("meowycore_config", function(ply, _, args)
@@ -247,6 +306,10 @@ if SERVER then
 			return
 		end
 
+		if set.entries[key].consoleOnly and IsValid(ply) then
+			reply("config.consoleonly", { ns = ns, key = key })
+			return
+		end
 		local text = table.concat(args, " ", 3)
 		local value, reason = parseText(set.entries[key], text)
 		if value == nil then reply("config.invalid", { ns = ns, key = key, reason = reason }) return end
@@ -268,5 +331,40 @@ else
 
 	hook.Add("InitPostEntity", "mcore_config_request", function()
 		Config.RequestMessage:Send({})
+	end)
+
+	Config.pendingFull = Config.pendingFull or {}
+	Config.pendingSet = Config.pendingSet or {}
+
+	--- Asks the server for every entry and value of a namespace (needs meowycore.config).
+	--- callback(entries, values)
+	function Config.RequestFull(ns, callback)
+		Config.pendingFull[ns] = callback
+		Config.FullQuery:Send({ ns = ns })
+	end
+
+	--- Asks the server to set a value. callback(ok, reason)
+	function Config.RequestSet(ns, key, value, callback)
+		Config.pendingSet[ns .. "." .. key] = callback
+		Config.SetRequest:Send({ ns = ns, key = key, value = { v = value } })
+	end
+
+	Config.FullMessage:Receive(function(data)
+		local cb = Config.pendingFull[data.ns]
+		Config.pendingFull[data.ns] = nil
+		if not cb then return end
+		local values = {}
+		for _, entry in ipairs(data.entries) do
+			values[entry.key] = fromJSON(entry, data.values[entry.key])
+			entry.default = fromJSON(entry, entry.default)
+		end
+		cb(data.entries, values)
+	end)
+
+	Config.SetResult:Receive(function(data)
+		local id = data.ns .. "." .. data.key
+		local cb = Config.pendingSet[id]
+		Config.pendingSet[id] = nil
+		if cb then cb(data.ok, data.reason) end
 	end)
 end

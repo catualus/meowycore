@@ -22,6 +22,7 @@ local FILES = {
 	{ "sv_data.lua", "sv" },
 	{ "cl_ui.lua", "cl" },
 	{ "cl_ui_panels.lua", "cl" },
+	{ "cl_ui_widgets.lua", "cl" },
 	{ "sh_updates.lua", "sh" },
 }
 
