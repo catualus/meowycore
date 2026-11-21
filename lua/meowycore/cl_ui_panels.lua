@@ -230,7 +230,12 @@ function CORE:Paint(w, h)
 	self:DrawTextEntryText(self:IsEnabled() and T.text or T.textMuted, T.accentSoft, T.accent)
 	local ph = self:GetPlaceholderText()
 	if self:GetText() == "" and ph and ph ~= "" then
-		draw.SimpleText(ph, self:GetFont(), 3, h / 2, T.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+		if self:IsMultiline() then
+			-- Multi-line text starts at the top, so the placeholder does too.
+			draw.SimpleText(ph, self:GetFont(), 3, 1, T.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+		else
+			draw.SimpleText(ph, self:GetFont(), 3, h / 2, T.textMuted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+		end
 	end
 end
 
@@ -265,10 +270,17 @@ end
 for _, name in ipairs({
 	"GetValue", "SetValue", "GetText", "SetText", "SetPlaceholderText", "GetPlaceholderText",
 	"SetNumeric", "GetNumeric", "SetCaretPos", "GetCaretPos", "SetHistoryEnabled", "SelectAllText",
-	"SetFont", "GetFont", "SetUpdateOnType", "SetMultiline", "SetEditable", "IsEditing",
+	"SetFont", "GetFont", "SetUpdateOnType", "IsMultiline", "SetEditable", "IsEditing",
 	"AddHistory", "SetTextColor", "SetAllowNonAsciiCharacters",
 }) do
 	ENTRY[name] = function(self, ...) return self.inner[name](self.inner, ...) end
+end
+
+--- Multi-line entries get vertical padding so the first line isn't on the border.
+function ENTRY:SetMultiline(b)
+	self.inner:SetMultiline(b)
+	local pad = b and UI.Scale(8) or 0
+	self.inner:DockMargin(UI.Scale(7), pad, UI.Scale(7), pad)
 end
 
 function ENTRY:RequestFocus() self.inner:RequestFocus() end
