@@ -447,24 +447,35 @@ function UI.FieldBox(parent, labelText, bottomMargin)
 	return box
 end
 
---- A row of duration preset chips docked under an entry; clicking fills the entry.
-function UI.DurationChips(parent, entry)
-	local chips = vgui.Create("Panel", parent)
+--- A wrapping row of preset chips docked under an entry; clicking fills the entry.
+function UI.PresetChips(parent, entry, presets, chipWidth)
+	local chips = vgui.Create("DIconLayout", parent)
 	chips:Dock(TOP)
-	chips:SetTall(UI.Scale(26))
 	chips:DockMargin(0, 0, 0, UI.Scale(12))
-	for _, preset in ipairs(UI.DURATION_PRESETS) do
-		local chip = vgui.Create("MeowyCore.Button", chips)
-		chip:Dock(LEFT)
-		chip:DockMargin(0, 0, UI.Scale(6), 0)
-		chip:SetWide(UI.Scale(58))
-		chip:SetTall(UI.Scale(26))
+	chips:SetSpaceX(UI.Scale(6))
+	chips:SetSpaceY(UI.Scale(6))
+	surface.SetFont(UI.Font(13, 600))
+	local rowW, rows = 0, 1
+	local maxW = parent:GetWide() > 0 and (parent:GetWide() - UI.Scale(32)) or UI.Scale(400)
+	for _, preset in ipairs(presets) do
+		local chip = chips:Add("MeowyCore.Button")
+		local w = chipWidth or (surface.GetTextSize(preset) + UI.Scale(20))
+		chip:SetSize(w, UI.Scale(26))
 		chip:SetFontSize(13)
 		chip:SetLabel(preset)
 		chip.Think = function(c) c:SetVariant(entry:GetValue() == preset and "primary" or "secondary") end
 		chip.DoClick = function() entry:SetValue(preset) end
+		if rowW + w > maxW then rows = rows + 1 rowW = 0 end
+		rowW = rowW + w + UI.Scale(6)
 	end
+	chips:SetTall(rows * UI.Scale(26) + (rows - 1) * UI.Scale(6))
+	chips.rows = rows
 	return chips
+end
+
+--- Duration preset chips (15m, 1h, 1d, 1w, perm) under an entry.
+function UI.DurationChips(parent, entry)
+	return UI.PresetChips(parent, entry, UI.DURATION_PRESETS, UI.Scale(58))
 end
 
 --[[
@@ -475,7 +486,10 @@ end
 function UI.Prompt(title, fields, onSubmit, opts)
 	opts = opts or {}
 	local height = UI.Scale(150)
-	for _, f in ipairs(fields) do height = height + UI.Scale(f.type == "duration" and 108 or 70) end
+	for _, f in ipairs(fields) do
+		height = height + UI.Scale(f.type == "duration" and 108 or 70)
+		if f.presets and #f.presets > 0 then height = height + UI.Scale(32 * math.ceil(#f.presets / 4)) end
+	end
 	local dlg = dialogFrame(title, opts.icon or "edit", height)
 
 	local readers = {}
@@ -483,7 +497,7 @@ function UI.Prompt(title, fields, onSubmit, opts)
 		-- Label + input live in their own container: a text entry moves itself
 		-- to the end of its parent's children when focused, which would
 		-- otherwise reorder the docked form.
-		local box = UI.FieldBox(dlg, field.label, field.type == "duration" and UI.Scale(6) or UI.Scale(12))
+		local box = UI.FieldBox(dlg, field.label, (field.type == "duration" or field.presets) and UI.Scale(6) or UI.Scale(12))
 
 		if field.type == "choice" then
 			local combo = vgui.Create("MeowyCore.Combo", box)
@@ -500,6 +514,7 @@ function UI.Prompt(title, fields, onSubmit, opts)
 			if field.type == "number" then entry:SetNumeric(true) end
 			readers[field.key] = function() return entry:GetValue() end
 			if field.type == "duration" then UI.DurationChips(dlg, entry) end
+			if field.presets and #field.presets > 0 then UI.PresetChips(dlg, entry, field.presets) end
 			if not dlg.firstInput then dlg.firstInput = entry end
 		end
 	end
