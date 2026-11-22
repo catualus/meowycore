@@ -15,6 +15,16 @@ Meowy Admin is an admin mod with the staff toolkit built in: ranks, bans, warnin
 3. Remove or disable your old admin mod (ULX, SAM, sAdmin…). Two admin mods fight over ranks. Before removing it, see [Importing](./importing) to bring your ranks and bans over.
 4. Restart the server.
 
+## Icons for players
+
+Add the **MeowyCore Content** Workshop item to your server's Workshop collection and set its ID:
+
+```
+meowycore_workshop <workshop id>
+```
+
+Without it, the icons are sent through the server download, which needs FastDL on most servers.
+
 ## Make yourself the owner
 
 Owners pass every check and can't be targeted by other staff. On a **listen server** the host is always the owner. On a **dedicated server**, run this in the server console (not in game):

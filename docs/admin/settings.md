@@ -39,4 +39,5 @@ Set these in `server.cfg` or the server console.
 | Variable | Default | Meaning |
 |---|---|---|
 | `meowycore_update_check` | 1 | Check the public `versions.json` on GitHub and tell admins when an update is out. No data is sent. `0` turns it off |
-| `meowycore_fastdl` | 1 | Send Meowy's icons to players through the server download. `0` if you serve them from Workshop instead |
+| `meowycore_workshop` | (empty) | Workshop ID of the **MeowyCore Content** addon. When set, players get the icons through Workshop and nothing goes through FastDL (recommended) |
+| `meowycore_fastdl` | 1 | Without a Workshop ID: send the icons through the server download. With `sv_allowdownload 0` they must also be on your FastDL host |
