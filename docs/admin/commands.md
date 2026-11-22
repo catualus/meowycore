@@ -51,6 +51,7 @@ You can only act on players with lower **immunity** than yours ([Ranks](./ranks)
 | slay (kill) | `!slay [targets]` | admin | Kill |
 | respawn | `!respawn [targets]` | admin | Respawn |
 | freeze / unfreeze | `!freeze [targets]` | admin | Freeze in place |
+| jail / unjail | `!jail <targets> [duration]` | admin | Keep players in place: no leaving, noclip, spawning or vehicles. Survives reconnecting |
 | god / ungod | `!god [targets]` | admin | Invulnerability |
 | cloak / uncloak | `!cloak [targets]` | admin | Invisibility |
 | noclip | `!noclip [targets]` | admin | Toggle noclip |

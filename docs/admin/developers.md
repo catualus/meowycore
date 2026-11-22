@@ -38,6 +38,17 @@ MeowyCore.Admin.RegisterCommand({
 
 `MeowyCore.Admin.FetchCanTarget(actor, steamid, function(ok, errKey) end)` applies the immunity rules to a SteamID whether or not the player is online. Use it for anything that acts on a SteamID.
 
+## Player state
+
+| Read | Gives |
+|---|---|
+| `MeowyCore.Admin.PlaytimeOf(ply)` | Total playtime in seconds, both realms |
+| `ply:GetUTime()`, `GetUTimeTotalTime()`… | The same, UTime-style, when UTime isn't installed (`utimeCompat` setting) |
+| `MeowyCore.Admin.IsMuted(ply)`, `IsGagged(ply)` | Server: chat mute / voice gag |
+| `MeowyCore.Admin.IsJailed(ply)` | Jailed (both realms) |
+| `ply:GetNW2Bool("mcore_frozen")`, `("mcore_jailed")` | Networked to clients, for scoreboards and HUDs |
+| `MeowyCore.Admin.SetSilence(kind, steamid, seconds, reason, actor)` | Server: mute/gag (`"mute"` / `"gag"`), `seconds` 0 = permanent, `nil` = lift. Saved across restarts |
+
 ## Events
 
 | Hook | Arguments |
