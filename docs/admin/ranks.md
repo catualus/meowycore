@@ -47,6 +47,7 @@ Meowy Admin is a CAMI provider: ranks are registered as CAMI usergroups and it a
 | `meowycore.admin.menu` | admin | Open the menu |
 | `meowycore.admin.ranks` | superadmin | Use the Ranks tab |
 | `meowycore.admin.seenotices` | admin | See staff-only action notices |
+| `meowycore.admin.seeadminchat` | admin | See staff chat (`!asay` / `@`) |
 | `meowycore.admin.cmd.<command>` | per command | Use a command ([list](./commands)) |
 | `meowycore.admin.warnings.view` | admin | See other players' warnings |
 | `meowycore.admin.warnings.removeothers` | admin | Remove warnings issued by other staff |

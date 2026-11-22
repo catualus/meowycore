@@ -14,6 +14,7 @@ Tables are JSON: `meowycore_config admin owners ["STEAM_0:1:123"]`. Settings are
 | Key | Default | Meaning |
 |---|---|---|
 | `chatPrefix` | `!` | Chat command prefix (1–2 characters) |
+| `adminChatPrefix` | `@` | Chat messages starting with this go to the staff. Empty turns it off (`!asay` still works) |
 | `hideCommandChat` | true | Hide the chat line of a command; only the result notice shows |
 | `noticeAudience` | `all` | Who sees action notices: `all`, `staff` (has `meowycore.admin.seenotices`) or `none` |
 | `allowEqualImmunity` | false | Staff may act on players with the same immunity |

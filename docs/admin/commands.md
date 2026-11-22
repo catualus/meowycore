@@ -57,6 +57,11 @@ You can only act on players with lower **immunity** than yours ([Ranks](./ranks)
 | noclip | `!noclip [targets]` | admin | Toggle noclip |
 | strip | `!strip [targets]` | admin | Remove weapons |
 | hp | `!hp <targets> <amount>` | admin | Set health |
+| slap | `!slap <targets> [damage]` | admin | Knock around, optional damage |
+| ignite / unignite | `!ignite <targets> [duration]` | admin | Set on fire (default 10 s) / put out |
+| buddha / unbuddha | `!buddha [targets]` | admin | Takes damage but can't die |
+| exitvehicle (eject) | `!exitvehicle <targets>` | admin | Force out of vehicles |
+| setjob (forcejob) | `!setjob <player> <job>` | admin | DarkRP: change job by its command or name |
 | armor | `!armor <targets> <amount>` | admin | Set armor |
 
 With no target, these act on yourself.
@@ -77,6 +82,7 @@ With no target, these act on yourself.
 | setrank (adduser, setgroup) | `!setrank <player> <rank> [duration] [expireto]` | superadmin | Set a rank, optionally timed; drops to `expireto` (default `user`) afterwards |
 | map | `!map <map> [gamemode]` | superadmin | Change map |
 | cleanup (cleanmap) | `!cleanup` | admin | Remove everything players spawned |
+| freezeprops | `!freezeprops [targets]` | admin | Freeze those players' props, or every prop |
 | import | `!import <source> [apply]` | owners only | [Import](./importing) from another admin mod |
 | setsitspot / clearsitspot | `!setsitspot` | superadmin | Set or clear this map's [sit spot](./reports#sits) |
 
@@ -85,6 +91,8 @@ With no target, these act on yourself.
 | Command | Usage | Does |
 |---|---|---|
 | menu (admin) | `!menu` | Open the admin menu (needs `meowycore.admin.menu`) |
+| asay (adminchat) | `!asay <message>` or `@ message` | Message the online staff (they need `meowycore.admin.seeadminchat`) |
+| pm (msg, whisper) | `!pm <player> <message>` | Private message; muted players can't send them |
 | help (commands) | `!help` | List the commands you can use |
 | who | `!who` | List players and ranks |
 | playtime (pt) | `!playtime [target]` | Total playtime |
